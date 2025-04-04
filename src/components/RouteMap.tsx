@@ -27,18 +27,27 @@ const FitBounds = ({ bounds }: { bounds: LatLngTuple[] }) => {
   return null;
 };
 
-const calculateDistance = (loc1: Location, loc2: Location): number => {
+// Haversine distance
+const calculateDistance = (loc1: Location | LatLngTuple, loc2: Location | LatLngTuple): number => {
   const R = 6371;
-  const dLat = (loc2.lat - loc1.lat) * Math.PI / 180;
-  const dLon = (loc2.lng - loc1.lng) * Math.PI / 180;
+  const [lat1, lon1] = Array.isArray(loc1) ? loc1 : [loc1.lat, loc1.lng];
+  const [lat2, lon2] = Array.isArray(loc2) ? loc2 : [loc2.lat, loc2.lng];
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(loc1.lat * Math.PI / 180) * Math.cos(loc2.lat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+};
+
+// Check if a station is within 10km of any point in the route
+const isStationNearRoute = (station: Location, routePoints: LatLngTuple[], maxDistanceKm = 10): boolean => {
+  return routePoints.some((point) => calculateDistance(station, point) <= maxDistanceKm);
 };
 
 export const RouteMap: React.FC<Props> = ({ start, end, evRangeKm }) => {
   const [chargingStations, setChargingStations] = useState<Location[]>([]);
+  const [filteredStations, setFilteredStations] = useState<Location[]>([]);
   const [routePoints, setRoutePoints] = useState<LatLngTuple[]>([]);
   const [bounds, setBounds] = useState<LatLngTuple[]>([]);
   const [intermediateStation, setIntermediateStation] = useState<Location | null>(null);
@@ -56,9 +65,7 @@ export const RouteMap: React.FC<Props> = ({ start, end, evRangeKm }) => {
       try {
         const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
         const data = await res.json();
-        setChargingStations(
-          data.elements.map((s: any) => ({ lat: s.lat, lng: s.lon }))
-        );
+        setChargingStations(data.elements.map((s: any) => ({ lat: s.lat, lng: s.lon })));
       } catch (err) {
         console.error('Charging station fetch failed:', err);
       }
@@ -77,8 +84,9 @@ export const RouteMap: React.FC<Props> = ({ start, end, evRangeKm }) => {
         setRoutePoints(points);
         setBounds([...points, [start.lat, start.lng], [end.lat, end.lng]]);
         setIntermediateStation(null);
+        setFilteredStations(chargingStations.filter(st => isStationNearRoute(st, points)));
       } else {
-        // Need to find intermediate charging station
+        // Route via charging station
         const reachableStations = chargingStations
           .map(station => ({
             ...station,
@@ -91,20 +99,19 @@ export const RouteMap: React.FC<Props> = ({ start, end, evRangeKm }) => {
           console.warn("No reachable charging station within EV range.");
           setRoutePoints([]);
           setIntermediateStation(null);
+          setFilteredStations([]);
           return;
         }
 
         const station = reachableStations[0];
         setIntermediateStation(station);
 
-        // Route 1: start → station
         const toStation = await fetchGraphHopperRoute(start, station);
-        // Route 2: station → end
         const toEnd = await fetchGraphHopperRoute(station, end);
-
         const fullRoute = [...toStation, ...toEnd];
         setRoutePoints(fullRoute);
         setBounds([...fullRoute, [start.lat, start.lng], [end.lat, end.lng]]);
+        setFilteredStations(chargingStations.filter(st => isStationNearRoute(st, fullRoute)));
       }
     };
 
@@ -122,12 +129,11 @@ export const RouteMap: React.FC<Props> = ({ start, end, evRangeKm }) => {
 
       {start && <Marker position={[start.lat, start.lng]} icon={blueIcon} />}
       {end && <Marker position={[end.lat, end.lng]} icon={redIcon} />}
-      {chargingStations.map((station, idx) => (
+
+      {/* Only show nearby charging stations */}
+      {filteredStations.map((station, idx) => (
         <Marker key={idx} position={[station.lat, station.lng]} icon={chargingIcon} />
       ))}
-      {intermediateStation && (
-        <Marker position={[intermediateStation.lat, intermediateStation.lng]} icon={chargingIcon} />
-      )}
 
       {routePoints.length > 0 && (
         <Polyline positions={routePoints} pathOptions={{ color: 'green', weight: 5 }} />
