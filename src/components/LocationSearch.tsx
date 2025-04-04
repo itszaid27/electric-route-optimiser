@@ -6,7 +6,7 @@ interface LocationSearchProps {
   onLocationSelect: (location: Location) => void;
 }
 
-const GEOAPIFY_API_KEY = "7b5fc55f85e441de844b662152bbe144"; // ← Replace with your key
+const GEOAPIFY_API_KEY = "7b5fc55f85e441de844b662152bbe144";
 
 export const LocationSearch: React.FC<LocationSearchProps> = ({
   label,
@@ -15,6 +15,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [mode, setMode] = useState<"none" | "manual" | "current">("none");
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Fetch suggestions from Geoapify
@@ -42,11 +43,11 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
     };
 
     const timeout = setTimeout(() => {
-      if (showSuggestions) fetchSuggestions();
+      if (showSuggestions && mode === "manual") fetchSuggestions();
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [query, showSuggestions]);
+  }, [query, showSuggestions, mode]);
 
   const handleSelect = (place: any) => {
     setQuery(place.properties.formatted);
@@ -62,12 +63,12 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
     setSuggestions([]);
     setShowSuggestions(false);
     if (suggestions.length > 0) {
-      handleSelect(suggestions[0]); // auto-select first suggestion
+      handleSelect(suggestions[0]);
     }
   };
 
   const handleFocus = () => {
-    if (query.length >= 3) {
+    if (query.length >= 3 && mode === "manual") {
       setShowSuggestions(true);
     }
   };
@@ -82,29 +83,76 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
     }
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setQuery("Current Location");
+        setMode("current");
+        onLocationSelect({ lat: latitude, lng: longitude });
+      },
+      (error) => {
+        alert("Unable to retrieve your location.");
+        console.error(error);
+      }
+    );
+  };
+
+  const handleManualSearch = () => {
+    setMode("manual");
+    setQuery("");
+    inputRef.current?.focus();
+  };
+
   return (
     <div className="relative">
       <label className="block text-gray-700 font-semibold mb-1">{label}</label>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          ref={inputRef}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={handleFocus}
-          onKeyDown={handleKeyDown}
-          className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder={`Enter ${label.toLowerCase()}...`}
-        />
-        <button
-          onClick={handleSearchClick}
-          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-        >
-          Search
-        </button>
-      </div>
 
-      {showSuggestions && suggestions.length > 0 && (
+      {mode === "none" ? (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={handleUseCurrentLocation}
+            className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
+          >
+            📍 Use Current Location
+          </button>
+          <button
+            onClick={handleManualSearch}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+          >
+            ✍️ Search Manually
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <input
+            type="text"
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={handleFocus}
+            onKeyDown={handleKeyDown}
+            className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={`Enter ${label.toLowerCase()}...`}
+            disabled={mode === "current"}
+          />
+          {mode === "manual" && (
+            <button
+              onClick={handleSearchClick}
+              className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+            >
+              Search
+            </button>
+          )}
+        </div>
+      )}
+
+      {mode === "manual" && showSuggestions && suggestions.length > 0 && (
         <ul className="absolute z-10 bg-white border border-gray-300 rounded-md w-full mt-1 max-h-48 overflow-y-auto shadow">
           {suggestions.map((place: any) => (
             <li

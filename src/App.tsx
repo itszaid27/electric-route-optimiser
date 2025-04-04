@@ -15,6 +15,7 @@ function App() {
   const [batteryStatus, setBatteryStatus] = useState<string>("");
   const [chargingStations, setChargingStations] = useState<Location[]>([]);
   const [shouldReroute, setShouldReroute] = useState(false);
+  const [selectedChargingStation, setSelectedChargingStation] = useState<Location | null>(null);
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -32,6 +33,7 @@ function App() {
     setBatteryStatus("");
     setChargingStations([]);
     setShouldReroute(false);
+    setSelectedChargingStation(null);
   }, [startLocation, endLocation]);
 
   const fetchChargingStations = async () => {
@@ -77,6 +79,8 @@ function App() {
           const currDist = Math.hypot(curr.lat - startLocation.lat, curr.lng - startLocation.lng);
           return currDist < prevDist ? curr : prev;
         });
+
+        setSelectedChargingStation(nearestStation);
 
         points = [
           `${startLocation.lat},${startLocation.lng}`,
@@ -203,7 +207,11 @@ function App() {
                 <p>📏 Total Distance: {route.distance.toFixed(2)} km</p>
                 <p>⏱️ ETA: {formatDuration(route.duration)}</p>
                 <p>{batteryStatus}</p>
-
+                {selectedChargingStation && (
+                  <p>
+                    🛑 Charging at: {selectedChargingStation.lat.toFixed(4)}, {selectedChargingStation.lng.toFixed(4)}
+                  </p>
+                )}
                 {evDetails && evDetails.mileage > 0 && (
                   <>
                     <p>🔋 Battery Required: {(route.distance / evDetails.mileage * 100).toFixed(2)}%</p>
@@ -225,6 +233,7 @@ function App() {
                   ? (evDetails.batteryPercentage / 100) * evDetails.mileage
                   : undefined
               }
+              selectedChargingStation={selectedChargingStation}
             />
           </div>
         </div>
