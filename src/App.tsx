@@ -164,7 +164,18 @@ function App() {
               </div>
             )}
 
-            <RouteMap route={route} start={startLocation} end={endLocation} chargingStations={chargingStations} />
+<RouteMap
+  route={route}
+  start={startLocation}
+  end={endLocation}
+  chargingStations={chargingStations}
+  evRangeKm={
+    evDetails?.batteryPercentage && evDetails?.mileage
+      ? (evDetails.batteryPercentage / 100) * evDetails.mileage
+      : undefined
+  }
+/>
+
           </div>
         </div>
       </main>
