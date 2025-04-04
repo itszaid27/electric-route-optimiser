@@ -13,8 +13,8 @@ function App() {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [loading, setLoading] = useState(false);
   const [batteryStatus, setBatteryStatus] = useState<string>("");
+  const [chargingStations, setChargingStations] = useState<Location[]>([]); // ⬅️ Added
 
-  // Get user location on load
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -22,16 +22,14 @@ function App() {
         setUserLocation([latitude, longitude]);
         setStartLocation({ lat: latitude, lng: longitude });
       },
-      () => {
-        console.error("Could not get user location");
-      }
+      () => console.error("Could not get user location")
     );
   }, []);
 
-  // Clear route when start or end location changes
   useEffect(() => {
     setRoute(null);
-    setBatteryStatus(""); // Reset battery status on location change
+    setBatteryStatus("");
+    setChargingStations([]); // ⬅️ Reset when locations change
   }, [startLocation, endLocation]);
 
   const calculateRoute = React.useCallback(async () => {
@@ -46,7 +44,7 @@ function App() {
       const data = await response.json();
 
       if (data.paths && data.paths.length > 0) {
-        const totalDistance = data.paths[0].distance / 1000; // Convert meters to km
+        const totalDistance = data.paths[0].distance / 1000;
         const pathCoordinates = data.paths[0].points.coordinates.map(
           ([lng, lat]: [number, number]) => ({ lat, lng })
         );
@@ -61,15 +59,41 @@ function App() {
 
         setRoute(newRoute);
         calculateBatteryStatus(totalDistance);
+        fetchChargingStations(); // ⬅️ Fetch charging stations after route calculation
       } else {
         console.error("No route found.");
       }
     } catch (error) {
-      console.error("Error fetching route from GraphHopper:", error);
+      console.error("Error fetching route:", error);
     } finally {
       setLoading(false);
     }
   }, [startLocation, endLocation, evDetails]);
+
+  const fetchChargingStations = async () => {
+    if (!startLocation || !endLocation) return;
+
+    const query = `
+      [out:json];
+      node["amenity"="charging_station"](around:50000,${(startLocation.lat + endLocation.lat) / 2},${(startLocation.lng + endLocation.lng) / 2});
+      out;
+    `;
+
+    try {
+      const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+      const data = await response.json();
+
+      if (data.elements) {
+        const stations = data.elements.map((station: any) => ({
+          lat: station.lat,
+          lng: station.lon,
+        }));
+        setChargingStations(stations);
+      }
+    } catch (error) {
+      console.error("Error fetching charging stations:", error);
+    }
+  };
 
   const calculateBatteryStatus = (distance: number) => {
     if (!evDetails) {
@@ -78,7 +102,6 @@ function App() {
     }
 
     const { batteryPercentage, mileage } = evDetails;
-
     if (!batteryPercentage || !mileage || mileage <= 0) {
       setBatteryStatus("⚠️ Invalid battery percentage or mileage.");
       return;
@@ -87,7 +110,7 @@ function App() {
     const maxTravelDistance = (batteryPercentage / 100) * mileage;
     if (maxTravelDistance >= distance) {
       const remainingBattery = batteryPercentage - (distance / mileage) * 100;
-      setBatteryStatus(`✅ Trip possible! Estimated battery left: ${remainingBattery.toFixed(2)}%`);
+      setBatteryStatus(`✅ Trip possible! Battery left: ${remainingBattery.toFixed(2)}%`);
     } else {
       const extraChargeNeeded = ((distance / mileage) * 100) - batteryPercentage;
       setBatteryStatus(`⚠️ Not enough battery! Need extra ${extraChargeNeeded.toFixed(2)}% charge.`);
@@ -96,7 +119,6 @@ function App() {
 
   const handleSearch = () => {
     if (startLocation && endLocation) {
-      console.log("Searching route from:", startLocation, "to:", endLocation);
       calculateRoute();
     } else {
       alert("Please select both start and destination locations.");
@@ -118,25 +140,15 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Panel - Inputs */}
           <div className="space-y-8">
             <EVDetailsForm onSubmit={setEVDetails} />
-
             <div className="bg-white p-6 rounded-lg shadow-md space-y-6">
               <h2 className="text-2xl font-bold text-gray-800">Route</h2>
-              <LocationSearch
-                label="Start Location"
-                onLocationSelect={setStartLocation}
-              />
-              <LocationSearch
-                label="Destination"
-                onLocationSelect={setEndLocation}
-              />
+              <LocationSearch label="Start Location" onLocationSelect={setStartLocation} />
+              <LocationSearch label="Destination" onLocationSelect={setEndLocation} />
               <button
                 onClick={handleSearch}
-                className={`w-full py-2 px-4 rounded-md text-white ${
-                  loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-                }`}
+                className={`w-full py-2 px-4 rounded-md text-white ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"}`}
                 disabled={loading}
               >
                 {loading ? "Calculating..." : "Calculate"}
@@ -144,9 +156,7 @@ function App() {
             </div>
           </div>
 
-          {/* Right Panel - Map & Distance */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Show Distance & Battery Status above Map if Route Exists */}
             {route && (
               <div className="bg-white p-4 rounded-lg shadow-md text-center text-lg font-semibold text-gray-700">
                 <p>📏 Total Distance: {route.distance.toFixed(2)} km</p>
@@ -154,8 +164,7 @@ function App() {
               </div>
             )}
 
-            {/* Map Component */}
-            <RouteMap route={route} start={startLocation} end={endLocation} />
+            <RouteMap route={route} start={startLocation} end={endLocation} chargingStations={chargingStations} />
           </div>
         </div>
       </main>
