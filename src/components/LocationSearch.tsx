@@ -119,13 +119,13 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
             onClick={handleUseCurrentLocation}
             className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
           >
-            📍 Use Current Location
+            Use Current Location
           </button>
           <button
             onClick={handleManualSearch}
             className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
           >
-            ✍️ Search Manually
+             Search Manually
           </button>
         </div>
       ) : (

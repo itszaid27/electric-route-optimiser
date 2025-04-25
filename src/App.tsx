@@ -171,13 +171,13 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow-sm">
+    <div className="min-h-screen bg-gray-600">
+      <header className="bg-gray-700 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center space-x-4">
-            <Car className="h-8 w-8 text-blue-500" />
-            <h1 className="text-2xl font-bold text-gray-900">
-              Electric Route Optimizer
+          
+            <h1 className="text-2xl font-bold text-white">
+              ZapTrack
             </h1>
           </div>
         </div>
@@ -204,19 +204,19 @@ function App() {
           <div className="lg:col-span-2 space-y-4">
             {route && (
               <div className="bg-white p-4 rounded-lg shadow-md text-center text-lg font-semibold text-gray-700 space-y-2">
-                <p>📏 Total Distance: {route.distance.toFixed(2)} km</p>
-                <p>⏱️ ETA: {formatDuration(route.duration)}</p>
+                <p> Total Distance: {route.distance.toFixed(2)} km</p>
+                <p> ETA: {formatDuration(route.duration)}</p>
                 <p>{batteryStatus}</p>
                 {selectedChargingStation && (
                   <p>
-                    🛑 Charging at: {selectedChargingStation.lat.toFixed(4)}, {selectedChargingStation.lng.toFixed(4)}
+                     Charging at: {selectedChargingStation.lat.toFixed(4)}, {selectedChargingStation.lng.toFixed(4)}
                   </p>
                 )}
                 {evDetails && evDetails.mileage > 0 && (
                   <>
-                    <p>🔋 Battery Required: {(route.distance / evDetails.mileage * 100).toFixed(2)}%</p>
+                    <p> Battery Required: {(route.distance / evDetails.mileage * 100).toFixed(2)}%</p>
                     {evDetails.batteryPercentage < (route.distance / evDetails.mileage * 100) && (
-                      <p>⚡ Recharge Stops Needed: {Math.ceil(((route.distance / evDetails.mileage * 100) - evDetails.batteryPercentage) / 100)}</p>
+                      <p> Recharge Stops Needed: {Math.ceil(((route.distance / evDetails.mileage * 100) - evDetails.batteryPercentage) / 100)}</p>
                     )}
                   </>
                 )}

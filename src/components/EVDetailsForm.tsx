@@ -19,7 +19,7 @@ export const EVDetailsForm: React.FC<EVDetailsFormProps> = ({ onSubmit }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md space-y-4">
+    <form onSubmit={handleSubmit} className="bg-gray-200 p-6 rounded-lg shadow-md space-y-4">
       <h2 className="text-2xl font-bold text-gray-800">EV Details</h2>
 
       {/* Battery Percentage */}
@@ -51,7 +51,7 @@ export const EVDetailsForm: React.FC<EVDetailsFormProps> = ({ onSubmit }) => {
 
       <button
         type="submit"
-        className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
+        className="w-full py-2 px-4 bg-black hover:bg-gray-500 text-white rounded-md"
       >
         Save EV Details
       </button>
