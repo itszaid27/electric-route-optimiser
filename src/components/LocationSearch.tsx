@@ -106,9 +106,11 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
   const handleManualSearch = () => {
     setMode("manual");
     setQuery("");
-    inputRef.current?.focus();
+    setSuggestions([]);
+    setShowSuggestions(true);
+    setTimeout(() => inputRef.current?.focus(), 0); // slight delay to allow rendering
   };
-
+  
   return (
     <div className="relative">
       <label className="block text-gray-700 font-semibold mb-1">{label}</label>
@@ -131,16 +133,21 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
       ) : (
         <div className="flex gap-2">
           <input
-            type="text"
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={handleFocus}
-            onKeyDown={handleKeyDown}
-            className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder={`Enter ${label.toLowerCase()}...`}
-            disabled={mode === "current"}
-          />
+  type="text"
+  ref={inputRef}
+  value={query}
+  onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
+  onFocus={() => {
+    setShowSuggestions(true);
+    handleFocus();
+  }}
+  onKeyDown={handleKeyDown}
+  autoComplete="off"
+  autoFocus
+  className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+  placeholder={`Enter ${label.toLowerCase()}...`}
+  disabled={mode === "current"}
+/>
           {mode === "manual" && (
             <button
               onClick={handleSearchClick}
